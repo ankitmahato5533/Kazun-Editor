@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  env-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          java -version 2>&1 | head -3
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" 2>/dev/null | tail -5
+          ls "$ANDROID_HOME/build-tools" 2>/dev/null | tail -3
