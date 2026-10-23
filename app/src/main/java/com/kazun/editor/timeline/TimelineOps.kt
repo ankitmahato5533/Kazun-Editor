@@ -64,17 +64,38 @@ object TimelineOps {
     fun moveClip(project: Project, clipId: String, newStartMs: Long): Project {
         val clip = findClip(project, clipId) ?: return project
         val track = findTrackOf(project, clipId) ?: return project
-        val others = track.clips.filterNot { it.id == clipId }.sortedBy { it.timelineStartMs }
-        val len = clip.durationMs
-
-        var start = newStartMs.coerceAtLeast(0)
-        // keep inside free gap between neighbours
-        val left = others.filter { it.timelineEndMs <= clip.timelineStartMs }.maxOfOrNull { it.timelineEndMs }
-        val right = others.filter { it.timelineStartMs >= clip.timelineEndMs }.minOfOrNull { it.timelineStartMs }
-        if (left != null) start = start.coerceAtLeast(left)
-        if (right != null) start = start.coerceAtMost((right - len).coerceAtLeast(start))
-
+        val start = freeStartFor(
+            others = track.clips.filterNot { it.id == clipId },
+            lengthMs = clip.durationMs,
+            desiredStartMs = newStartMs
+        )
         return project.mapClip(clipId) { it.copy(timelineStartMs = start) }
+    }
+
+    /**
+     * Every free gap on a track is a (start, maxStart) pair. If the desired start
+     * lands in one, use it; otherwise snap into the closest gap. This guarantees
+     * clips never overlap whatever the drag does.
+     */
+    private fun freeStartFor(others: List<Clip>, lengthMs: Long, desiredStartMs: Long): Long {
+        val sorted = others.sortedBy { it.timelineStartMs }
+        val gaps = mutableListOf<Pair<Long, Long>>()
+        var cursor = 0L
+        for (o in sorted) {
+            if (o.timelineStartMs - cursor >= lengthMs) {
+                gaps.add(cursor to (o.timelineStartMs - lengthMs))
+            }
+            cursor = maxOf(cursor, o.timelineEndMs)
+        }
+        gaps.add(cursor to Long.MAX_VALUE / 4)
+
+        val desired = desiredStartMs.coerceAtLeast(0)
+        val exact = gaps.firstOrNull { desired in it.first..it.second }
+        if (exact != null) return desired
+        val nearest = gaps.minByOrNull { (a, b) ->
+            minOf(kotlin.math.abs(a - desired), kotlin.math.abs(b - desired))
+        } ?: return desired
+        return desired.coerceIn(nearest.first, nearest.second)
     }
 
     fun trimStart(project: Project, clipId: String, newTrimStartMs: Long): Project {

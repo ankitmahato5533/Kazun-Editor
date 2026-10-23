@@ -83,9 +83,16 @@ class TimelineOpsTest {
     }
 
     @Test
-    fun `move clamps between neighbours`() {
+    fun `move into distant free space is allowed`() {
         val p = project(clip(0, 1000, "a"), clip(1000, 1000, "b"), clip(2000, 1000, "c"))
         val out = TimelineOps.moveClip(p, "b", 5000)
+        assertEquals(5000L, videoTrack(out).clips.first { it.id == "b" }.timelineStartMs)
+    }
+
+    @Test
+    fun `move snaps into nearest gap when target overlaps`() {
+        val p = project(clip(0, 1000, "a"), clip(1000, 1000, "b"), clip(2000, 1000, "c"))
+        val out = TimelineOps.moveClip(p, "b", 1200)
         assertEquals(1000L, videoTrack(out).clips.first { it.id == "b" }.timelineStartMs)
     }
 
