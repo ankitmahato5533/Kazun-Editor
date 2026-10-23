@@ -31,13 +31,12 @@ jobs:
         shell: bash
         run: |
           set +e
-          {
-            echo "=== unit tests ==="
-            gradle :app:testDebugUnitTest --no-daemon --stacktrace
-            echo "=== assemble debug ==="
-            gradle :app:assembleDebug --no-daemon --stacktrace
-          } > build_full.log 2>&1
-          STATUS=$?
+          gradle :app:testDebugUnitTest --no-daemon --stacktrace > build_full.log 2>&1
+          T1=$?
+          echo "=== assemble debug ===" >> build_full.log
+          gradle :app:assembleDebug --no-daemon --stacktrace >> build_full.log 2>&1
+          T2=$?
+          STATUS=$(( T1 + T2 ))
           echo "exit=$STATUS"
           grep -n -A6 -E "^e: |error:|FAILURE:|What went wrong|Execution failed for task|> Task .* FAILED" build_full.log | head -300 > build_error.txt
           if [ ! -s build_error.txt ]; then tail -80 build_full.log > build_error.txt; fi

@@ -128,7 +128,7 @@ class TimelineOpsTest {
             val t = videoTrack(p)
             when (rnd.nextInt(4)) {
                 0 -> p = TimelineOps.addClip(
-                    p, t.id, clip(rnd.nextLong().mod(5000).toLong(), 300 + rnd.nextInt(700))
+                    p, t.id, clip(rnd.nextLong().mod(5000).toLong(), (300 + rnd.nextInt(700)).toLong())
                 )
                 1 -> t.clips.randomOrNull(rnd)?.let { p = TimelineOps.moveClip(p, it.id, rnd.nextLong().mod(6000).toLong()) }
                 2 -> t.clips.randomOrNull(rnd)?.let { p = TimelineOps.split(p, it.id, it.timelineStartMs + it.durationMs / 2) }
