@@ -435,7 +435,7 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
 
     if (showEffects && current != null) {
         EffectsSheet(
-            catalog = EffectCatalog.load(context),
+            catalog = catalog,
             project = current,
             selectedClipId = selectedClipId,
             onDismiss = { showEffects = false },
