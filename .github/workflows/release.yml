@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -29,14 +30,35 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Tests
-        run: gradle :app:testDebugUnitTest --no-daemon
-
-      - name: Build APK
+      - name: Build + test
+        id: build
+        shell: bash
         run: |
-          gradle :app:assembleDebug --no-daemon
-          VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$VERSION" = "workflow_dispatch" ] || [ -z "$VERSION" ]; then VERSION="0.0.0"; fi
+          set +e
+          gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace > build.log 2>&1
+          STATUS=$?
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ $STATUS -ne 0 ]; then
+            grep -n -A8 -E "^e: |error:|FAILURE:|What went wrong|Execution failed|FAILED$|OutOfMemory" build.log | head -300 > err.txt
+            if [ ! -s err.txt ]; then tail -120 build.log > err.txt; fi
+          fi
+          exit $STATUS
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=$(gh pr list --state open --json number -q '.[0].number' | head -1)
+          if [ -n "$PR" ] && [ -f err.txt ]; then
+            { echo "### Release build failed"; echo '```'; cat err.txt; echo '```'; } > comment.md
+            gh pr comment "$PR" --body-file comment.md
+          fi
+
+      - name: Prepare dist
+        run: |
+          VERSION="${{ inputs.tag || github.ref_name }}"
+          VERSION="${VERSION#v}"
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/Kazun-Editor-${VERSION}.apk"
           cd dist && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
@@ -49,22 +71,20 @@ jobs:
           gh release delete "$TAG" --yes 2>/dev/null || true
           gh release create "$TAG" dist/* \
             --title "Kazun Editor $TAG" \
-            --notes "## Kazun Editor $TAG
+            --notes "Free, offline, open-source Android video editor.
 
-            Free, offline, open-source Android video editor.
+          ### Install
+          1. Download the APK below
+          2. Allow 'Install unknown apps' when prompted
+          3. Open and start editing
 
-            ### Install
-            1. Download \`Kazun-Editor-*.apk\` below
-            2. Allow **Install unknown apps** when prompted
-            3. Open and start editing
+          ### In this alpha
+          - Project dashboard (16:9, 9:16, 1:1, 4:5)
+          - Multi-track timeline: drag, trim, split, zoom
+          - 1,256 effect catalog with search and parameter controls
+          - Text overlays
+          - MP4 export (stream copy)
+          - 100% offline, no internet permission, zero telemetry
 
-            > Alpha build: uninstall any previous build before installing this one.
-
-            ### What is in this build
-            - Project dashboard, 16:9 / 9:16 / 1:1 / 4:5
-            - Multi-track timeline: drag, trim, split, zoom, snap-free seeking
-            - 1,256 effect catalog with search + auto-generated parameter UI
-            - Text overlays
-            - MP4 export (stream copy, no re-encode)
-            - 100% offline, zero telemetry, no network permission
-            "
+          > Uninstall any previous alpha before installing this build.
+          "
