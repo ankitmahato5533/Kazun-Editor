@@ -6,7 +6,7 @@
   <a href="https://github.com/ankitmahato5533/Kazun-Editor/releases"><b>⬇ Download APK</b></a>
 </p>
 
-> **Status:** `0.1.0-alpha` — working core editor. Effects catalog complete (1,256), GPU rendering next.
+> **Status:** `0.2.0-alpha` — working core editor with **real GPU effects** in preview and export.
 
 ## Download
 
@@ -25,9 +25,9 @@ https://github.com/ankitmahato5533/Kazun-Editor/releases
 - **Projects** — 16:9, 9:16, 1:1, 4:5
 - **Timeline** — multi-track, drag, trim, split, delete, zoom, undo/redo
 - **Preview** — ExoPlayer playback, playhead sync
-- **Effects** — 1,256 ka catalog, search, live parameter controls
+- **Effects** — 1,256 ka catalog, search, live parameter controls, **GPU pe render** (LUT grading, blur, RGB split)
 - **Text** — overlay add karo
-- **Export** — MP4 (stream copy), share sheet
+- **Export** — MP4 via Media3 Transformer, effects baked in, hardware encoder
 - **Privacy** — no INTERNET permission, zero telemetry
 
 Detailed status: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
