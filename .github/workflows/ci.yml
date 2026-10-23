@@ -54,6 +54,33 @@ jobs:
             gh pr comment "$PR" --body-file comment.md
           fi
 
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=$(gh pr list --head "$GITHUB_REF_NAME" --json number -q '.[0].number' | head -1)
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          SIZE=$(du -h "$APK" | cut -f1)
+          BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          BADGING=$("$ANDROID_HOME/build-tools/$BT/aapt" dump badging "$APK" 2>/dev/null | head -4)
+          EFFECTS=$(python3 -c "import json;print(len(json.load(open('app/src/main/assets/effects/catalog.json'))['effects']))")
+          TESTS=$(grep -rc "@Test" app/src/test/java | awk -F: '{s+=$2} END {print s}')
+          {
+            echo "### Build green"
+            echo ""
+            echo "| Check | Value |"
+            echo "|---|---|"
+            echo "| APK size | $SIZE |"
+            echo "| Effects in catalog | $EFFECTS |"
+            echo "| Unit tests | $TESTS |"
+            echo ""
+            echo '```'
+            echo "$BADGING"
+            echo '```'
+          } > ok.md
+          if [ -n "$PR" ]; then gh pr comment "$PR" --body-file ok.md; fi
+
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
