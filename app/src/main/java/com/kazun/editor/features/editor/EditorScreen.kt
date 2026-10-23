@@ -58,12 +58,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.kazun.editor.data.ProjectStore
 import com.kazun.editor.effects.EffectCatalog
-import com.kazun.editor.export.MuxerExporter
+import com.kazun.editor.effects.EffectMapper
+import com.kazun.editor.export.TransformerExporter
 import com.kazun.editor.media.MediaProbe
 import com.kazun.editor.model.Clip
 import com.kazun.editor.model.ClipKind
@@ -85,7 +88,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
 @Composable
 fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
     val context = LocalContext.current
@@ -102,16 +105,33 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
     var showEffects by remember { mutableStateOf(false) }
     var showTextDialog by remember { mutableStateOf(false) }
     var exporting by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0f) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var lastExportFile by remember { mutableStateOf<File?>(null) }
-    var loadedUri by remember { mutableStateOf<String?>(null) }
+    var loadedUri by remember(exoPlayer) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(projectId, stored) {
         if (project == null) project = stored.firstOrNull { it.id == projectId }
     }
 
-    val exoPlayer = remember { ExoPlayer.Builder(context).build() }
-    DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
+    val catalog = remember { EffectCatalog.load(context) }
+    val canvasClip = remember(project, playheadMs) {
+        project?.let { p ->
+            p.tracks.firstOrNull { it.type == TrackType.VIDEO }?.let { TimelineOps.clipAt(it, playheadMs) }
+        }
+    }
+    val stackSignature = EffectMapper.stackSignature(canvasClip)
+    val previewEffects = remember(stackSignature) {
+        canvasClip?.let { EffectMapper.mapClip(context, it, catalog) } ?: emptyList()
+    }
+    // Media3 applies one effect chain per player, so the player is rebuilt when the
+    // active clip's stack changes. Brief pause at clip boundaries is expected.
+    val exoPlayer = remember(stackSignature) {
+        ExoPlayer.Builder(context).apply {
+            if (previewEffects.isNotEmpty()) setVideoEffects(previewEffects)
+        }.build()
+    }
+    DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
 
     fun commit(newProject: Project, recordUndo: Boolean = true) {
         val old = project ?: return
@@ -218,7 +238,9 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
             val result = runCatching {
                 val outDir = File(context.filesDir, "exports").apply { mkdirs() }
                 val out = File(outDir, "kazun_${System.currentTimeMillis()}.mp4")
-                MuxerExporter(context).export(p, out)
+                TransformerExporter(context).export(p, catalog, out) { pct ->
+                    progress = pct
+                }
             }
             exporting = false
             exportMessage = result.fold(
@@ -390,7 +412,10 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
         }
 
         if (exporting) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // ---- bottom bar ----
