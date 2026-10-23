@@ -1,48 +1,64 @@
 # Kazun Editor
 
-Ek **free, offline, open-source Android video editor** — koi subscription nahi, koi API key nahi, koi data device se bahar nahi.
+**Free, offline, open-source Android video editor.** Koi subscription nahi, koi API key nahi, koi data device se bahar nahi.
 
-> **Status:** Planning stage. Code abhi shuru nahi hua.
+<p align="center">
+  <a href="https://github.com/ankitmahato5533/Kazun-Editor/releases"><b>⬇ Download APK</b></a>
+</p>
 
-## Kya hai ye
-
-- **Free forever** — user ke liye free, developer ke liye ₹0 recurring cost
-- **100% offline** — editing aur AI, dono phone ke andar
-- **No third-party APIs** — koi cloud call nahi
-- **Privacy by architecture** — video kabhi device chhodta hi nahi
-- **Open source** — code public, **sirf GitHub Releases** pe distribute
-
-## Kya banega
-
-| Phase | Feature |
-|---|---|
-| 1 | Timeline editor — import, trim, split, filters, text, audio, export |
-| 2 | Effects — transitions, keyframes, speed ramp, color grading, chroma key |
-| 3 | AI on-device — auto-captions, silence cut, background removal, TTS |
-| 4 | Polish — templates, onboarding, in-app updater, GitHub release |
-
-## Tech
-
-Kotlin · Jetpack Compose · Media3 (ExoPlayer + Transformer) · OpenGL ES 3.0 · Room · whisper.cpp · MediaPipe · FFmpeg
+> **Status:** `0.1.0-alpha` — working core editor. Effects catalog complete (1,256), GPU rendering next.
 
 ## Download
 
-Sirf **GitHub Releases** se — koi Play Store, koi F-Droid nahi.
+Sirf **GitHub Releases** — koi Play Store, koi F-Droid nahi.
 
 ```
 https://github.com/ankitmahato5533/Kazun-Editor/releases
 ```
 
-- `arm64` APK — 99% phones ke liye (yehi download karo)
-- `armv7` APK — purane phones ke liye
-- Har release ke saath `SHA256SUMS.txt` — verify kar sakte ho
+1. Latest release se `.apk` download karo
+2. "Install unknown apps" allow karo (Android ek baar poochta hai)
+3. Install → open → naya project
 
-> Pehli baar install karte waqt Android "Install unknown apps" allow karne ko kahega — ye normal hai.
+## Kya kaam karta hai
 
-## Documentation
+- **Projects** — 16:9, 9:16, 1:1, 4:5
+- **Timeline** — multi-track, drag, trim, split, delete, zoom, undo/redo
+- **Preview** — ExoPlayer playback, playhead sync
+- **Effects** — 1,256 ka catalog, search, live parameter controls
+- **Text** — overlay add karo
+- **Export** — MP4 (stream copy), share sheet
+- **Privacy** — no INTERNET permission, zero telemetry
 
-- [Technical Blueprint](docs/BLUEPRINT.md) — architecture, data model, module structure, feature spec, roadmap
+Detailed status: [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
+
+## Build from source
+
+```bash
+git clone https://github.com/ankitmahato5533/Kazun-Editor.git
+cd Kazun-Editor
+gradle :app:assembleDebug        # needs JDK 17 + Android SDK 35
+```
+
+APK: `app/build/outputs/apk/debug/app-debug.apk`
+
+## Regenerate the effect catalog
+
+```bash
+node tools/generate_catalog.mjs   # writes app/src/main/assets/effects/catalog.json
+```
+
+1,256 effects = 156 primitives + 1,100 data presets. Deterministic output.
+
+## Tech
+
+Kotlin 2.0 · Jetpack Compose · Media3 (ExoPlayer) · MediaExtractor/MediaMuxer · kotlinx.serialization · Gradle 8.9 / AGP 8.7
+
+## Docs
+
+- [Technical blueprint](docs/BLUEPRINT.md) — architecture, data model, 1,256-effect catalog, roadmap
+- [Implementation status](docs/IMPLEMENTATION.md) — what works, what is pending
 
 ## License
 
-TBD — GPL-3.0 recommended (FFmpeg compliance ke liye).
+GPL-3.0 — FFmpeg/GPL compliance ke liye recommended.
