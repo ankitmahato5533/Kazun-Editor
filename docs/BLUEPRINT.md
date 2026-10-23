@@ -1,7 +1,9 @@
 # Kazun Editor — Technical Blueprint
 
-> **Status:** Planning only. Is doc mein koi code nahi hai — sirf architecture, scope, decisions.
+> **Status:** v0.1.0-alpha shipped (core editor). Blueprint continues to describe the full target.
 > **Last updated:** 2026-10-23
+
+> **Implementation:** what works today is tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ---
 
