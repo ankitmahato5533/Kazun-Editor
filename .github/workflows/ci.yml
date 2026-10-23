@@ -2,16 +2,63 @@ name: CI
 
 on:
   push:
+    branches: ['**']
+  pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
-  env-check:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Toolchain
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Unit tests + assemble debug
+        id: build
+        shell: bash
         run: |
-          java -version 2>&1 | head -3
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls "$ANDROID_HOME/platforms" 2>/dev/null | tail -5
-          ls "$ANDROID_HOME/build-tools" 2>/dev/null | tail -3
+          set +e
+          {
+            echo "=== unit tests ==="
+            gradle :app:testDebugUnitTest --no-daemon --stacktrace
+            echo "=== assemble debug ==="
+            gradle :app:assembleDebug --no-daemon --stacktrace
+          } > build_full.log 2>&1
+          STATUS=$?
+          echo "exit=$STATUS"
+          grep -nE "^e: |error:|FAILURE:|What went wrong|Caused by|Execution failed|> Task .* FAILED" build_full.log | head -200 > build_error.txt
+          if [ ! -s build_error.txt ]; then tail -80 build_full.log > build_error.txt; fi
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          exit $STATUS
+
+      - name: Report failure on PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=$(gh pr list --head "$GITHUB_REF_NAME" --json number -q '.[0].number' | head -1)
+          if [ -n "$PR" ]; then
+            { echo "### CI failed (\`$GITHUB_SHA\`)"; echo '```'; cat build_error.txt; echo '```'; } > comment.md
+            gh pr comment "$PR" --body-file comment.md
+          fi
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kazun-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
