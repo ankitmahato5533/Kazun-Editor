@@ -5,7 +5,8 @@ import androidx.media3.common.Effect
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
 import androidx.media3.effect.HslAdjustment
-import androidx.media3.effect.LutEffect
+import androidx.media3.effect.GaussianBlur
+import androidx.media3.effect.SingleColorLut
 import androidx.media3.effect.RgbAdjustment
 import androidx.media3.effect.RgbFilter
 import com.kazun.editor.model.Clip
@@ -46,18 +47,22 @@ object EffectMapper {
                     descriptor?.let { ProceduralLut.build(it, instance) }
                         ?: ProceduralLut.build(fallbackDescriptor(instance), instance)
                 }
-                effects += LutEffect(bitmap)
+                effects += SingleColorLut.createFromBitmap(bitmap)
                 val sat = 1f + (params["sat"] ?: 0f) / 100f * amount
                 if (sat != 1f) effects += HslAdjustment.Builder()
                     .adjustSaturation((sat - 1f) * 100f)
                     .build()
             }
 
-            "blur", "detail" -> {
-                // sharpen/soften approximation: contrast bump + slight brightness
+            "blur" -> {
+                val radius = 0.5f + (params["radius"] ?: params["amount"] ?: 0.4f) * 24f * amount
+                effects += GaussianBlur(radius)
+            }
+
+            "detail" -> {
+                // sharpening via local-contrast bump (true unsharp lands with the custom shader)
                 val k = 1f + (params["amount"] ?: 0.4f) * amount * 0.5f
                 effects += Contrast(k)
-                if (family == "blur") effects += Brightness(-0.04f * amount)
             }
 
             "glitch" -> {

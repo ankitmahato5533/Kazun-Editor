@@ -108,7 +108,7 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
     var progress by remember { mutableStateOf(0f) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var lastExportFile by remember { mutableStateOf<File?>(null) }
-    var loadedUri by remember(exoPlayer) { mutableStateOf<String?>(null) }
+    var loadedUri by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(projectId, stored) {
         if (project == null) project = stored.firstOrNull { it.id == projectId }
@@ -124,14 +124,16 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
     val previewEffects = remember(stackSignature) {
         canvasClip?.let { EffectMapper.mapClip(context, it, catalog) } ?: emptyList()
     }
-    // Media3 applies one effect chain per player, so the player is rebuilt when the
-    // active clip's stack changes. Brief pause at clip boundaries is expected.
-    val exoPlayer = remember(stackSignature) {
-        ExoPlayer.Builder(context).apply {
-            if (previewEffects.isNotEmpty()) setVideoEffects(previewEffects)
-        }.build()
-    }
+
+    // One player for the whole editor. Media3 lets us swap the effect chain at
+    // runtime (must be set once before prepare), so crossing a clip boundary with a
+    // different stack does not rebuild the player or interrupt playback.
+    val exoPlayer = remember { ExoPlayer.Builder(context).build() }
     DisposableEffect(exoPlayer) { onDispose { exoPlayer.release() } }
+
+    LaunchedEffect(stackSignature) {
+        runCatching { exoPlayer.setVideoEffects(previewEffects) }
+    }
 
     fun commit(newProject: Project, recordUndo: Boolean = true) {
         val old = project ?: return
@@ -158,6 +160,7 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
         val clip = clipAtPlayhead() ?: return@LaunchedEffect
         if (clip.sourceUri.isEmpty()) return@LaunchedEffect
         if (loadedUri != clip.sourceUri) {
+            runCatching { exoPlayer.setVideoEffects(previewEffects) }
             exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(clip.sourceUri)))
             exoPlayer.prepare()
             loadedUri = clip.sourceUri
