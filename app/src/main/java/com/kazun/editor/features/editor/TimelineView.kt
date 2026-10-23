@@ -73,7 +73,7 @@ fun TimelineView(
     Column(Modifier.fillMaxWidth()) {
         // ---------- ruler ----------
         Row {
-            Spacer(Modifier.width(HEADER_WIDTH))
+            Spacer(Modifier.width(HEADER_WIDTH.dp))
             Box(
                 Modifier
                     .fillMaxWidth()

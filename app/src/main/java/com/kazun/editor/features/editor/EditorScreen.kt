@@ -142,7 +142,7 @@ fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
             exoPlayer.prepare()
             loadedUri = clip.sourceUri
         }
-        val localMs = ((playheadMs - clip.timelineStartMs) * clip.speed).coerceAtLeast(0)
+        val localMs = (((playheadMs - clip.timelineStartMs) * clip.speed).toLong()).coerceAtLeast(0L)
         if (!isPlaying && kotlin.math.abs(exoPlayer.currentPosition - localMs) > 120) {
             exoPlayer.seekTo(localMs)
         }
