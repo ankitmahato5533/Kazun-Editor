@@ -58,7 +58,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
-import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -88,7 +87,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class, UnstableApi::class)
+@androidx.annotation.OptIn(markerClass = [UnstableApi::class])
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(store: ProjectStore, projectId: String, onBack: () -> Unit) {
     val context = LocalContext.current
